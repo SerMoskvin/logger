@@ -2,8 +2,7 @@ package logger
 
 type Config struct {
 	Level      string `yaml:"level"`       // debug, info, warn, error
-	Directory  string `yaml:"directory"`   // путь к папке с логами
-	Filename   string `yaml:"filename"`    // имя файла (app.log)
+	FilePath   string `yaml:"file_path"`   // полный путь к файлу логов (включая имя файла)
 	MaxSizeMB  int    `yaml:"max_size"`    // макс. размер в MB
 	MaxBackups int    `yaml:"max_backups"` // макс. число файлов
 	MaxAgeDays int    `yaml:"max_age"`     // срок хранения в днях
@@ -14,8 +13,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		Level:      "info",
-		Directory:  "./logs",
-		Filename:   "app.log",
+		FilePath:   "./logs/testlog.log",
 		MaxSizeMB:  100,
 		MaxBackups: 3,
 		MaxAgeDays: 30,

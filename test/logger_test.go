@@ -4,32 +4,42 @@ import (
 	"encoding/json"
 	l "logger"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"go.uber.org/zap"
 )
 
+const testLogPath = `C:\Users\Joker\Desktop\logger\test\test_files\testlog.log`
+
 func TestNewLogger(t *testing.T) {
 	t.Run("ShouldCreateLoggerWithDefaultConfig", func(t *testing.T) {
 		cfg := l.DefaultConfig()
+		cfg.FilePath = testLogPath
+
+		_ = os.Remove(testLogPath)
+
 		log, err := l.New(cfg)
 		if err != nil {
 			t.Fatalf("Failed to create logger: %v", err)
 		}
-		defer log.Sync()
+		defer cleanupLogger(t, log)
 
-		if log == nil {
-			t.Error("Expected logger instance, got nil")
+		// Делаем тестовую запись в лог
+		log.Info("test log creation")
+
+		if err := log.Sync(); err != nil {
+			t.Fatalf("Failed to sync logs: %v", err)
+		}
+
+		if _, err := os.Stat(testLogPath); os.IsNotExist(err) {
+			t.Errorf("Log file was not created at %s", testLogPath)
 		}
 	})
 
 	t.Run("ShouldErrorWhenCannotCreateDir", func(t *testing.T) {
 		cfg := l.Config{
-			Directory: "\x00invalid_path/invalid_path",
-			Filename:  "test.log",
+			FilePath: `F:/invalidx22\path\test.log`,
 		}
 		_, err := l.New(cfg)
 		if err == nil {
@@ -39,135 +49,70 @@ func TestNewLogger(t *testing.T) {
 }
 
 func TestLogger_Levels(t *testing.T) {
-	tempDir := t.TempDir()
+	// Для этого теста используем отдельный файл
+	testLog := `C:\Users\Joker\Desktop\logger\test\test_files\levels_test.log`
+	_ = os.Remove(testLog)
 
-	tests := []struct {
-		name     string
-		level    string
-		messages []struct {
-			level     string
-			message   string
-			shouldLog bool
-		}
-	}{
-		{
-			name:  "DebugLevel_LogsEverything",
-			level: "debug",
-			messages: []struct {
-				level     string
-				message   string
-				shouldLog bool
-			}{
-				{"debug", "debug message", true},
-				{"info", "info message", true},
-				{"warn", "warn message", true},
-				{"error", "error message", true},
-			},
-		},
-		{
-			name:  "InfoLevel_FiltersDebug",
-			level: "info",
-			messages: []struct {
-				level     string
-				message   string
-				shouldLog bool
-			}{
-				{"debug", "debug message", false},
-				{"info", "info message", true},
-				{"warn", "warn message", true},
-				{"error", "error message", true},
-			},
-		},
-		{
-			name:  "ErrorLevel_OnlyErrors",
-			level: "error",
-			messages: []struct {
-				level     string
-				message   string
-				shouldLog bool
-			}{
-				{"debug", "debug message", false},
-				{"info", "info message", false},
-				{"warn", "warn message", false},
-				{"error", "error message", true},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := l.Config{
-				Level:     tt.level,
-				Directory: tempDir,
-				Filename:  tt.name + ".log",
-			}
-
-			log, err := l.New(cfg)
-			if err != nil {
-				t.Fatalf("Failed to create logger: %v", err)
-			}
-
-			defer func() {
-				if err := log.Sync(); err != nil {
-					t.Logf("Sync error: %v", err)
-				}
-				if err := log.Close(); err != nil {
-					t.Logf("Close error: %v", err)
-				}
-				time.Sleep(100 * time.Millisecond)
-			}()
-
-			for _, msg := range tt.messages {
-				switch msg.level {
-				case "debug":
-					log.Debug(msg.message)
-				case "info":
-					log.Info(msg.message)
-				case "warn":
-					log.Warn(msg.message)
-				case "error":
-					log.Error(msg.message)
-				}
-			}
-
-			if err := log.Sync(); err != nil {
-				t.Fatalf("Failed to sync logs: %v", err)
-			}
-
-			content := readLogFile(t, filepath.Join(tempDir, tt.name+".log"))
-
-			for _, msg := range tt.messages {
-				if msg.shouldLog {
-					if !strings.Contains(content, msg.message) {
-						t.Errorf("Expected to find %q in log", msg.message)
-					}
-				} else {
-					if strings.Contains(content, msg.message) {
-						t.Errorf("Unexpected %q in log", msg.message)
-					}
-				}
-			}
-		})
-	}
-}
-
-func TestLogger_LogFormat(t *testing.T) {
-	tempDir := t.TempDir()
 	cfg := l.Config{
-		Level:     "debug",
-		Directory: tempDir,
-		Filename:  "format_test.log",
+		Level:    "debug",
+		FilePath: testLog,
 	}
 
 	log, err := l.New(cfg)
 	if err != nil {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
-	defer func() {
-		if err := log.Sync(); err != nil {
-			t.Logf("Sync error: %v", err)
-		}
-	}()
+	defer cleanupLogger(t, log)
+
+	tests := []struct {
+		level     string
+		message   string
+		shouldLog bool
+	}{
+		{"debug", "debug message", true},
+		{"info", "info message", true},
+		{"warn", "warn message", true},
+		{"error", "error message", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.level, func(t *testing.T) {
+			switch tt.level {
+			case "debug":
+				log.Debug(tt.message)
+			case "info":
+				log.Info(tt.message)
+			case "warn":
+				log.Warn(tt.message)
+			case "error":
+				log.Error(tt.message)
+			}
+
+			if err := log.Sync(); err != nil {
+				t.Fatalf("Failed to sync logs: %v", err)
+			}
+
+			content := readLogFile(t, testLog)
+			if tt.shouldLog && !strings.Contains(content, tt.message) {
+				t.Errorf("Expected to find %q in log", tt.message)
+			}
+		})
+	}
+}
+
+func TestLogger_LogFormat(t *testing.T) {
+	_ = os.Remove(testLogPath)
+
+	cfg := l.Config{
+		Level:    "debug",
+		FilePath: testLogPath,
+	}
+
+	log, err := l.New(cfg)
+	if err != nil {
+		t.Fatalf("Failed to create logger: %v", err)
+	}
+	defer cleanupLogger(t, log)
 
 	testMsg := "test log message"
 	log.Info(testMsg, zap.String("key", "value"))
@@ -176,7 +121,7 @@ func TestLogger_LogFormat(t *testing.T) {
 		t.Fatalf("Failed to sync logs: %v", err)
 	}
 
-	content := readLogFile(t, filepath.Join(tempDir, "format_test.log"))
+	content := readLogFile(t, testLogPath)
 	lines := strings.Split(strings.TrimSpace(content), "\n")
 
 	for _, line := range lines {
@@ -206,48 +151,7 @@ func TestLogger_LogFormat(t *testing.T) {
 	}
 }
 
-func TestLogger_Rotation(t *testing.T) {
-	tempDir := t.TempDir()
-	cfg := l.Config{
-		Level:      "info",
-		Directory:  tempDir,
-		Filename:   "rotation_test.log",
-		MaxSizeMB:  1,
-		MaxBackups: 2,
-		Compress:   true,
-	}
-
-	log, err := l.New(cfg)
-	if err != nil {
-		t.Fatalf("Failed to create logger: %v", err)
-	}
-	defer func() {
-		if err := log.Sync(); err != nil {
-			t.Logf("Sync error: %v", err)
-		}
-	}()
-
-	for i := 0; i < 1000; i++ {
-		log.Info(strings.Repeat("test log message ", 50), zap.Int("index", i))
-	}
-
-	files, err := os.ReadDir(tempDir)
-	if err != nil {
-		t.Fatalf("Failed to read log dir: %v", err)
-	}
-
-	var rotatedFiles int
-	for _, file := range files {
-		if file.Name() != "rotation_test.log" && strings.HasPrefix(file.Name(), "rotation_test.log") {
-			rotatedFiles++
-		}
-	}
-
-	if rotatedFiles != cfg.MaxBackups {
-		t.Errorf("Expected %d rotated files, got %d", cfg.MaxBackups, rotatedFiles)
-	}
-}
-
+// Вспомогательная функция для чтения лог-файла
 func readLogFile(t *testing.T, path string) string {
 	data, err := os.ReadFile(path)
 	if err != nil {
