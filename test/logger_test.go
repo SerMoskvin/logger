@@ -4,20 +4,38 @@ import (
 	"encoding/json"
 	l "logger"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"go.uber.org/zap"
 )
 
-const testLogPath = `C:\Users\Joker\Desktop\logger\test\test_files\testlog.log`
+var testDir = func() string {
+	dir, err := os.Getwd() // Текущая рабочая директория
+	if err != nil {
+		panic(err)
+	}
+	return dir
+}()
+
+// Получаем путь к файлу логов относительно директории тестов
+func getTestLogPath(filename string) string {
+	return filepath.Join(testDir, "test_files", filename)
+}
 
 func TestNewLogger(t *testing.T) {
 	t.Run("ShouldCreateLoggerWithDefaultConfig", func(t *testing.T) {
+		var testLogName = "testlog.log"
 		cfg := l.DefaultConfig()
-		cfg.FilePath = testLogPath
+		cfg.FilePath = getTestLogPath(testLogName)
 
-		_ = os.Remove(testLogPath)
+		// Создаем директорию test_files если её нет
+		if err := os.MkdirAll(filepath.Dir(cfg.FilePath), 0755); err != nil {
+			t.Fatalf("Failed to create test_files directory: %v", err)
+		}
+
+		_ = os.Remove(cfg.FilePath)
 
 		log, err := l.New(cfg)
 		if err != nil {
@@ -32,8 +50,8 @@ func TestNewLogger(t *testing.T) {
 			t.Fatalf("Failed to sync logs: %v", err)
 		}
 
-		if _, err := os.Stat(testLogPath); os.IsNotExist(err) {
-			t.Errorf("Log file was not created at %s", testLogPath)
+		if _, err := os.Stat(cfg.FilePath); os.IsNotExist(err) {
+			t.Errorf("Log file was not created at %s", cfg.FilePath)
 		}
 	})
 
@@ -49,9 +67,8 @@ func TestNewLogger(t *testing.T) {
 }
 
 func TestLogger_Levels(t *testing.T) {
-	// Для этого теста используем отдельный файл
-	testLog := `C:\Users\Joker\Desktop\logger\test\test_files\levels_test.log`
-	_ = os.Remove(testLog)
+	testLog := getTestLogPath("levels_test.log")
+	_ = os.Remove(testLog) // Очищаем старый файл
 
 	cfg := l.Config{
 		Level:    "debug",
@@ -101,11 +118,12 @@ func TestLogger_Levels(t *testing.T) {
 }
 
 func TestLogger_LogFormat(t *testing.T) {
-	_ = os.Remove(testLogPath)
+	testLog := getTestLogPath("format_test.log")
+	_ = os.Remove(testLog)
 
 	cfg := l.Config{
 		Level:    "debug",
-		FilePath: testLogPath,
+		FilePath: testLog,
 	}
 
 	log, err := l.New(cfg)
@@ -121,7 +139,7 @@ func TestLogger_LogFormat(t *testing.T) {
 		t.Fatalf("Failed to sync logs: %v", err)
 	}
 
-	content := readLogFile(t, testLogPath)
+	content := readLogFile(t, testLog)
 	lines := strings.Split(strings.TrimSpace(content), "\n")
 
 	for _, line := range lines {

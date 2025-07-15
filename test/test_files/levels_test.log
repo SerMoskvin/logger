@@ -1,4 +1,4 @@
-{"level":"DEBUG","timestamp":"2025-07-14T21:11:58.967+0300","caller":"test/logger_test.go:82","message":"debug message"}
-{"level":"INFO","timestamp":"2025-07-14T21:11:59.006+0300","caller":"test/logger_test.go:84","message":"info message"}
-{"level":"WARN","timestamp":"2025-07-14T21:11:59.006+0300","caller":"test/logger_test.go:86","message":"warn message"}
-{"level":"ERROR","timestamp":"2025-07-14T21:11:59.006+0300","caller":"test/logger_test.go:88","message":"error message","stacktrace":"logger/test_test.TestLogger_Levels.func1\n\tc:/Users/Joker/Desktop/logger/test/logger_test.go:88\ntesting.tRunner\n\tC:/Program Files/Go/src/testing/testing.go:1792"}
+{"level":"DEBUG","timestamp":"2025-07-14T21:31:09.775+0300","caller":"test/logger_test.go:99","message":"debug message"}
+{"level":"INFO","timestamp":"2025-07-14T21:31:09.815+0300","caller":"test/logger_test.go:101","message":"info message"}
+{"level":"WARN","timestamp":"2025-07-14T21:31:09.815+0300","caller":"test/logger_test.go:103","message":"warn message"}
+{"level":"ERROR","timestamp":"2025-07-14T21:31:09.815+0300","caller":"test/logger_test.go:105","message":"error message","stacktrace":"logger/test_test.TestLogger_Levels.func1\n\tc:/Users/Joker/Desktop/logger/test/logger_test.go:105\ntesting.tRunner\n\tC:/Program Files/Go/src/testing/testing.go:1792"}
