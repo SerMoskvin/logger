@@ -87,3 +87,9 @@ func (l *Logger) Close() error {
 func (l *Logger) Sync() error {
 	return l.Logger.Sync()
 }
+
+var exitFunc = os.Exit
+
+func SetExitFunc(f func(int)) {
+	exitFunc = f
+}
