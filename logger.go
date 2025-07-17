@@ -19,13 +19,10 @@ type Logger struct {
 
 func New(cfg Config) (*Logger, error) {
 	dir := filepath.Dir(cfg.FilePath)
-
-	// Создаем все необходимые директории
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create log directory: %w", err)
 	}
 
-	// Настройка уровней
 	zapLevel := zapcore.InfoLevel
 	switch cfg.Level {
 	case "debug":
@@ -36,7 +33,6 @@ func New(cfg Config) (*Logger, error) {
 		zapLevel = zapcore.ErrorLevel
 	}
 
-	// Настройка ротации (используем полный путь из конфига)
 	lumberjackLogger := &lumberjack.Logger{
 		Filename:   cfg.FilePath,
 		MaxSize:    cfg.MaxSizeMB,
@@ -83,7 +79,6 @@ func (l *Logger) Close() error {
 	return nil
 }
 
-// Sync синхронизирует буферы
 func (l *Logger) Sync() error {
 	return l.Logger.Sync()
 }

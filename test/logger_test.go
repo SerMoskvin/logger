@@ -68,7 +68,7 @@ func TestNewLogger(t *testing.T) {
 
 func TestLogger_Levels(t *testing.T) {
 	testLog := getTestLogPath("levels_test.log")
-	_ = os.Remove(testLog) // Очищаем старый файл
+	_ = os.Remove(testLog)
 
 	cfg := l.Config{
 		Level:    "debug",

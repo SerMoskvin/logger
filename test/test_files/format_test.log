@@ -1,1 +1,1 @@
-{"level":"INFO","timestamp":"2025-07-14T21:31:05.677+0300","caller":"test/logger_test.go:136","message":"test log message","key":"value"}
+{"level":"INFO","timestamp":"2025-07-18T01:07:21.611+0300","caller":"test/logger_test.go:136","message":"test log message","key":"value"}

@@ -17,12 +17,11 @@ func TestLogger_Rotation(t *testing.T) {
 	cfg := l.Config{
 		Level:      "info",
 		FilePath:   rotatedLogPath,
-		MaxSizeMB:  1, // 1 MB
+		MaxSizeMB:  1,
 		MaxBackups: 2,
 		Compress:   true,
 	}
 
-	// Удаляем старые файлы
 	removeOldLogFiles(t, rotatedLogPath)
 
 	log, err := l.New(cfg)
@@ -31,8 +30,7 @@ func TestLogger_Rotation(t *testing.T) {
 	}
 	defer cleanupLogger(t, log)
 
-	// Увеличиваем объём данных (200KB на сообщение, 15 сообщений = 3MB)
-	message := strings.Repeat("a", 200000) // 200KB per message
+	message := strings.Repeat("a", 200000) // 200KB на одно сообщение
 	for i := 0; i < 15; i++ {
 		log.Info(message, zap.Int("index", i))
 		if i%3 == 0 {
@@ -42,10 +40,8 @@ func TestLogger_Rotation(t *testing.T) {
 		}
 	}
 
-	// Увеличиваем время ожидания
 	time.Sleep(2 * time.Second)
 
-	// Проверяем результаты
 	checkRotationResults(t, rotatedLogPath)
 }
 
@@ -53,13 +49,11 @@ func checkRotationResults(t *testing.T, mainLogPath string) {
 	dir := filepath.Dir(mainLogPath)
 	baseName := strings.TrimSuffix(filepath.Base(mainLogPath), filepath.Ext(mainLogPath))
 
-	// Ищем все файлы, включая сжатые
 	files, err := filepath.Glob(filepath.Join(dir, baseName+"*"))
 	if err != nil {
 		t.Fatalf("Failed to find log files: %v", err)
 	}
 
-	// Фильтруем только релевантные файлы
 	var logFiles []string
 	for _, f := range files {
 		if f == mainLogPath ||
@@ -71,7 +65,6 @@ func checkRotationResults(t *testing.T, mainLogPath string) {
 
 	t.Logf("Found log files:\n%s", strings.Join(logFiles, "\n"))
 
-	// Проверяем размеры файлов
 	for _, f := range logFiles {
 		info, err := os.Stat(f)
 		if err == nil {
