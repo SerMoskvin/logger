@@ -1,5 +1,29 @@
 package logger
 
+import (
+	"embed"
+	"fmt"
+	"os"
+
+	"gopkg.in/yaml.v3"
+)
+
+//go:embed default_config.yml
+var defaultConfigFS embed.FS
+
+const defaultConfigPath = "default_config.yml"
+
+func LoadDefaultConfig() (*LevelConfig, error) {
+	return LoadConfig("")
+}
+
+// Field представляет собой лог-поле
+type Field struct {
+	Key   string
+	Value interface{}
+}
+
+// Config содержит конфигурацию логгера
 type Config struct {
 	Level      string `yaml:"level"`
 	FilePath   string `yaml:"file_path"`
@@ -9,6 +33,7 @@ type Config struct {
 	Compress   bool   `yaml:"compress"`
 }
 
+// LevelConfig содержит конфигурацию для разных уровней логирования
 type LevelConfig struct {
 	Debug Config `yaml:"debug"`
 	Info  Config `yaml:"info"`
@@ -16,50 +41,29 @@ type LevelConfig struct {
 	Error Config `yaml:"error"`
 }
 
-func DefaultConfig() Config {
-	return Config{
-		Level:      "info",
-		FilePath:   "./logs/app.log",
-		MaxSizeMB:  10,
-		MaxBackups: 3,
-		MaxAgeDays: 30,
-		Compress:   true,
+// LoadConfig загружает конфигурацию из YAML файла
+func LoadConfig(configPath string) (*LevelConfig, error) {
+	var data []byte
+	var err error
+
+	data, err = os.ReadFile(configPath)
+	if err != nil {
+		data, err = defaultConfigFS.ReadFile(defaultConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read both custom and default config: %w", err)
+		}
 	}
+
+	var cfg LevelConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	return &cfg, nil
 }
 
-func DefaultLevelConfig() LevelConfig {
-	return LevelConfig{
-		Debug: Config{
-			Level:      "debug",
-			FilePath:   "./logs/debug.log",
-			MaxSizeMB:  10,
-			MaxBackups: 3,
-			MaxAgeDays: 7,
-			Compress:   false,
-		},
-		Info: Config{
-			Level:      "info",
-			FilePath:   "./logs/info.log",
-			MaxSizeMB:  20,
-			MaxBackups: 5,
-			MaxAgeDays: 30,
-			Compress:   true,
-		},
-		Warn: Config{
-			Level:      "warn",
-			FilePath:   "./logs/warn.log",
-			MaxSizeMB:  30,
-			MaxBackups: 7,
-			MaxAgeDays: 60,
-			Compress:   true,
-		},
-		Error: Config{
-			Level:      "error",
-			FilePath:   "./logs/error.log",
-			MaxSizeMB:  50,
-			MaxBackups: 10,
-			MaxAgeDays: 90,
-			Compress:   true,
-		},
-	}
+var exitFunc = os.Exit
+
+func SetExitFunc(f func(int)) {
+	exitFunc = f
 }

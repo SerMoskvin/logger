@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 func TestLogger_Rotation(t *testing.T) {
@@ -30,9 +28,9 @@ func TestLogger_Rotation(t *testing.T) {
 	}
 	defer cleanupLogger(t, log)
 
-	message := strings.Repeat("a", 200000) // 200KB на одно сообщение
+	message := strings.Repeat("a", 200000)
 	for i := 0; i < 15; i++ {
-		log.Info(message, zap.Int("index", i))
+		log.Info(message, l.Int("index", i))
 		if i%3 == 0 {
 			if err := log.Sync(); err != nil {
 				t.Logf("Sync error: %v", err)
@@ -41,8 +39,15 @@ func TestLogger_Rotation(t *testing.T) {
 	}
 
 	time.Sleep(2 * time.Second)
-
 	checkRotationResults(t, rotatedLogPath)
+}
+
+func readLogFile(t *testing.T, path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("Failed to read log file: %v", err)
+	}
+	return string(data)
 }
 
 func checkRotationResults(t *testing.T, mainLogPath string) {
@@ -77,7 +82,6 @@ func checkRotationResults(t *testing.T, mainLogPath string) {
 	}
 }
 
-// Вспомогательная функция для удаления старых лог-файлов
 func removeOldLogFiles(t *testing.T, basePath string) {
 	dir := filepath.Dir(basePath)
 	base := filepath.Base(basePath)
@@ -96,7 +100,6 @@ func removeOldLogFiles(t *testing.T, basePath string) {
 	}
 }
 
-// Вспомогательная функция для очистки логгера
 func cleanupLogger(t *testing.T, log *l.Logger) {
 	if err := log.Sync(); err != nil {
 		t.Logf("Sync error: %v", err)

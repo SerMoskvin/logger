@@ -11,12 +11,14 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
+// Logger обертка над zap.Logger
 type Logger struct {
 	*zap.Logger
 	level  string
 	closer io.Closer
 }
 
+// New создает новый экземпляр логгера
 func New(cfg Config) (*Logger, error) {
 	dir := filepath.Dir(cfg.FilePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -69,6 +71,23 @@ func New(cfg Config) (*Logger, error) {
 	}, nil
 }
 
+// Методы Logger
+func (l *Logger) Debug(msg string, fields ...Field) {
+	l.Logger.Debug(msg, convertFields(fields)...)
+}
+
+func (l *Logger) Info(msg string, fields ...Field) {
+	l.Logger.Info(msg, convertFields(fields)...)
+}
+
+func (l *Logger) Warn(msg string, fields ...Field) {
+	l.Logger.Warn(msg, convertFields(fields)...)
+}
+
+func (l *Logger) Error(msg string, fields ...Field) {
+	l.Logger.Error(msg, convertFields(fields)...)
+}
+
 func (l *Logger) Close() error {
 	if err := l.Sync(); err != nil {
 		return err
@@ -81,10 +100,4 @@ func (l *Logger) Close() error {
 
 func (l *Logger) Sync() error {
 	return l.Logger.Sync()
-}
-
-var exitFunc = os.Exit
-
-func SetExitFunc(f func(int)) {
-	exitFunc = f
 }

@@ -3,10 +3,9 @@ package logger
 import (
 	"fmt"
 	"sync"
-
-	"go.uber.org/zap"
 )
 
+// LevelLogger представляет собой логгер с разными уровнями
 type LevelLogger struct {
 	debug *Logger
 	info  *Logger
@@ -15,7 +14,13 @@ type LevelLogger struct {
 	mu    sync.Mutex
 }
 
-func NewLevel(cfg LevelConfig) (*LevelLogger, error) {
+// NewLevel создает новый LevelLogger
+func NewLevel(configPath string) (*LevelLogger, error) {
+	cfg, err := LoadConfig(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load logger config: %w", err)
+	}
+
 	debugLog, err := New(cfg.Debug)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create debug logger: %w", err)
@@ -44,19 +49,20 @@ func NewLevel(cfg LevelConfig) (*LevelLogger, error) {
 	}, nil
 }
 
-func (m *LevelLogger) Debug(msg string, fields ...zap.Field) {
+// Методы LevelLogger
+func (m *LevelLogger) Debug(msg string, fields ...Field) {
 	m.debug.Debug(msg, fields...)
 }
 
-func (m *LevelLogger) Info(msg string, fields ...zap.Field) {
+func (m *LevelLogger) Info(msg string, fields ...Field) {
 	m.info.Info(msg, fields...)
 }
 
-func (m *LevelLogger) Warn(msg string, fields ...zap.Field) {
+func (m *LevelLogger) Warn(msg string, fields ...Field) {
 	m.warn.Warn(msg, fields...)
 }
 
-func (m *LevelLogger) Error(msg string, fields ...zap.Field) {
+func (m *LevelLogger) Error(msg string, fields ...Field) {
 	m.error.Error(msg, fields...)
 }
 

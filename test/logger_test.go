@@ -1,36 +1,153 @@
 package logger_test
 
 import (
-	"encoding/json"
 	l "logger"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"go.uber.org/zap"
 )
 
 var testDir = func() string {
-	dir, err := os.Getwd() // Текущая рабочая директория
+	dir, err := os.Getwd()
 	if err != nil {
 		panic(err)
 	}
 	return dir
 }()
 
-// Получаем путь к файлу логов относительно директории тестов
 func getTestLogPath(filename string) string {
 	return filepath.Join(testDir, "test_files", filename)
 }
 
-func TestNewLogger(t *testing.T) {
-	t.Run("ShouldCreateLoggerWithDefaultConfig", func(t *testing.T) {
-		var testLogName = "testlog.log"
-		cfg := l.DefaultConfig()
-		cfg.FilePath = getTestLogPath(testLogName)
+func TestLoadConfig(t *testing.T) {
+	t.Run("Should load default config when file not found", func(t *testing.T) {
+		_, err := l.LoadConfig("nonexistent_file.yml")
+		if err != nil {
+			t.Fatalf("Expected to load default config, got error: %v", err)
+		}
+	})
 
-		// Создаем директорию test_files если её нет
+	t.Run("Should load custom config with correct structure", func(t *testing.T) {
+		testConfigPath := filepath.Join("..", "default_config.yml")
+
+		cfg, err := l.LoadConfig(testConfigPath)
+		if err != nil {
+			t.Fatalf("Failed to load config: %v", err)
+		}
+
+		if cfg.Debug.FilePath != "../logs/debug.log" {
+			t.Errorf("Expected debug file path '../logs/debug.log', got '%s'", cfg.Debug.FilePath)
+		}
+
+		if cfg.Info.FilePath != "../logs/info.log" {
+			t.Errorf("Expected info file path '../logs/info.log', got '%s'", cfg.Info.FilePath)
+		}
+
+		if cfg.Warn.FilePath != "../logs/warn.log" {
+			t.Errorf("Expected warn file path '../logs/warn.log', got '%s'", cfg.Warn.FilePath)
+		}
+
+		if cfg.Error.FilePath != "../logs/error.log" {
+			t.Errorf("Expected error file path '../logs/error.log', got '%s'", cfg.Error.FilePath)
+		}
+	})
+}
+
+func TestNewLevel(t *testing.T) {
+	testLogsDir := "test_files"
+	testLog := filepath.Join(testLogsDir, "level_logger_test.log")
+
+	if err := os.MkdirAll(testLogsDir, 0755); err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+	defer os.Remove(testLog)
+
+	tmpConfigContent := `
+debug:
+  level: debug
+  file_path: ` + testLog + `
+  max_size: 10
+  max_backups: 3
+  max_age: 7
+  compress: false
+info:
+  level: info
+  file_path: ` + testLog + `
+  max_size: 10
+  max_backups: 3
+  max_age: 7
+  compress: false
+warn:
+  level: warn
+  file_path: ` + testLog + `
+  max_size: 10
+  max_backups: 3
+  max_age: 7
+  compress: false
+error:
+  level: error
+  file_path: ` + testLog + `
+  max_size: 10
+  max_backups: 3
+  max_age: 7
+  compress: false
+`
+
+	tmpConfigFile := filepath.Join(testLogsDir, "tmp_config.yml")
+	if err := os.WriteFile(tmpConfigFile, []byte(tmpConfigContent), 0644); err != nil {
+		t.Fatalf("Failed to write temp config file: %v", err)
+	}
+	defer os.Remove(tmpConfigFile)
+
+	t.Run("Should create level logger with test config file", func(t *testing.T) {
+		logger, err := l.NewLevel(tmpConfigFile)
+		if err != nil {
+			t.Fatalf("Failed to create level logger: %v", err)
+		}
+		defer logger.Close()
+
+		logger.Debug("debug message")
+		logger.Info("info message")
+		logger.Warn("warn message")
+		logger.Error("error message")
+
+		if err := logger.Sync(); err != nil {
+			t.Fatalf("Failed to sync logs: %v", err)
+		}
+
+		content, err := os.ReadFile(testLog)
+		if err != nil {
+			t.Fatalf("Failed to read log file: %v", err)
+		}
+
+		messages := []string{
+			"debug message",
+			"info message",
+			"warn message",
+			"error message",
+		}
+
+		for _, msg := range messages {
+			if !strings.Contains(string(content), msg) {
+				t.Errorf("Expected to find %q in log", msg)
+			}
+		}
+	})
+}
+
+func TestNewLogger(t *testing.T) {
+	t.Run("ShouldCreateLoggerWithConfig", func(t *testing.T) {
+		var testLogName = "testlog.log"
+		cfg := l.Config{
+			Level:      "info",
+			FilePath:   getTestLogPath(testLogName),
+			MaxSizeMB:  10,
+			MaxBackups: 3,
+			MaxAgeDays: 30,
+			Compress:   true,
+		}
+
 		if err := os.MkdirAll(filepath.Dir(cfg.FilePath), 0755); err != nil {
 			t.Fatalf("Failed to create test_files directory: %v", err)
 		}
@@ -43,7 +160,6 @@ func TestNewLogger(t *testing.T) {
 		}
 		defer cleanupLogger(t, log)
 
-		// Делаем тестовую запись в лог
 		log.Info("test log creation")
 
 		if err := log.Sync(); err != nil {
@@ -64,116 +180,4 @@ func TestNewLogger(t *testing.T) {
 			t.Error("Expected error when directory cannot be created")
 		}
 	})
-}
-
-func TestLogger_Levels(t *testing.T) {
-	testLog := getTestLogPath("levels_test.log")
-	_ = os.Remove(testLog)
-
-	cfg := l.Config{
-		Level:    "debug",
-		FilePath: testLog,
-	}
-
-	log, err := l.New(cfg)
-	if err != nil {
-		t.Fatalf("Failed to create logger: %v", err)
-	}
-	defer cleanupLogger(t, log)
-
-	tests := []struct {
-		level     string
-		message   string
-		shouldLog bool
-	}{
-		{"debug", "debug message", true},
-		{"info", "info message", true},
-		{"warn", "warn message", true},
-		{"error", "error message", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.level, func(t *testing.T) {
-			switch tt.level {
-			case "debug":
-				log.Debug(tt.message)
-			case "info":
-				log.Info(tt.message)
-			case "warn":
-				log.Warn(tt.message)
-			case "error":
-				log.Error(tt.message)
-			}
-
-			if err := log.Sync(); err != nil {
-				t.Fatalf("Failed to sync logs: %v", err)
-			}
-
-			content := readLogFile(t, testLog)
-			if tt.shouldLog && !strings.Contains(content, tt.message) {
-				t.Errorf("Expected to find %q in log", tt.message)
-			}
-		})
-	}
-}
-
-func TestLogger_LogFormat(t *testing.T) {
-	testLog := getTestLogPath("format_test.log")
-	_ = os.Remove(testLog)
-
-	cfg := l.Config{
-		Level:    "debug",
-		FilePath: testLog,
-	}
-
-	log, err := l.New(cfg)
-	if err != nil {
-		t.Fatalf("Failed to create logger: %v", err)
-	}
-	defer cleanupLogger(t, log)
-
-	testMsg := "test log message"
-	log.Info(testMsg, zap.String("key", "value"))
-
-	if err := log.Sync(); err != nil {
-		t.Fatalf("Failed to sync logs: %v", err)
-	}
-
-	content := readLogFile(t, testLog)
-	lines := strings.Split(strings.TrimSpace(content), "\n")
-
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-
-		var entry map[string]interface{}
-		if err := json.Unmarshal([]byte(line), &entry); err != nil {
-			t.Fatalf("Invalid JSON format: %v\n%s", err, line)
-		}
-
-		requiredFields := []string{"level", "timestamp", "message"}
-		for _, field := range requiredFields {
-			if _, ok := entry[field]; !ok {
-				t.Errorf("Missing required field: %s", field)
-			}
-		}
-
-		if entry["message"] != testMsg {
-			t.Errorf("Expected message %q, got %q", testMsg, entry["message"])
-		}
-
-		if fields, ok := entry["key"].(string); !ok || fields != "value" {
-			t.Errorf("Expected field 'key' with value 'value', got %v", entry["key"])
-		}
-	}
-}
-
-// Вспомогательная функция для чтения лог-файла
-func readLogFile(t *testing.T, path string) string {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("Failed to read log file: %v", err)
-	}
-	return string(data)
 }

@@ -1,0 +1,28 @@
+debug:
+  level: "debug"
+  file_path: "../logs/debug.log"
+  max_size: 10
+  max_backups: 3
+  max_age: 7
+  compress: false
+info:
+  level: "info"
+  file_path: "../logs/info.log"
+  max_size: 20
+  max_backups: 5
+  max_age: 30
+  compress: true
+warn:
+  level: "warn"
+  file_path: "../logs/warn.log"
+  max_size: 30
+  max_backups: 7
+  max_age: 60
+  compress: true
+error:
+  level: "error"
+  file_path: "../logs/error.log"
+  max_size: 50
+  max_backups: 10
+  max_age: 90
+  compress: true

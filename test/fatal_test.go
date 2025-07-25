@@ -12,21 +12,24 @@ import (
 var testLogsDir = filepath.Join("test_files")
 
 func TestLogger_Fatal(t *testing.T) {
+	testLogsDir := "test_files"
 	testLog := filepath.Join(testLogsDir, "fatal_test.log")
 
 	if err := os.MkdirAll(testLogsDir, 0755); err != nil {
 		t.Fatalf("Failed to create test directory: %v", err)
 	}
+	defer os.RemoveAll(testLogsDir)
 
-	var exitCode int
-	oldExit := func(code int) { os.Exit(code) }
-	defer func() {
-		l.SetExitFunc(oldExit)
-	}()
+	originalExit := func(code int) { os.Exit(code) }
+	defer l.SetExitFunc(originalExit)
+
+	exitCalled := false
+	exitCode := 0
 
 	l.SetExitFunc(func(code int) {
+		exitCalled = true
 		exitCode = code
-		panic("exit called")
+		panic("fatal exit")
 	})
 
 	cfg := l.Config{
@@ -39,19 +42,25 @@ func TestLogger_Fatal(t *testing.T) {
 		t.Fatalf("Failed to create logger: %v", err)
 	}
 	defer func() {
-		if err := log.Sync(); err != nil {
-			t.Logf("Sync error: %v", err)
+		if err := log.Close(); err != nil {
+			t.Logf("Close error: %v", err)
 		}
 	}()
 
 	func() {
 		defer func() {
-			if r := recover(); r != nil && r.(string) != "exit called" {
-				panic(r) // Пробрасываем другие panic
+			if r := recover(); r != nil {
+				if r != "fatal exit" {
+					t.Errorf("Unexpected panic: %v", r)
+				}
 			}
 		}()
 		log.Fatal("fatal error occurred")
 	}()
+
+	if !exitCalled {
+		t.Error("Expected exit function to be called")
+	}
 
 	if exitCode != 1 {
 		t.Errorf("Expected exit code 1, got %d", exitCode)
@@ -59,8 +68,12 @@ func TestLogger_Fatal(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	content := readLogFile(t, testLog)
-	if !strings.Contains(content, "fatal error occurred") {
+	content, err := os.ReadFile(testLog)
+	if err != nil {
+		t.Fatalf("Failed to read log file: %v", err)
+	}
+
+	if !strings.Contains(string(content), "fatal error occurred") {
 		t.Error("Expected fatal message in log")
 	}
 }
