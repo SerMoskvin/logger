@@ -1,11 +1,12 @@
 package logger_test
 
 import (
-	l "logger"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	l "github.com/SerMoskvin/logger"
 )
 
 var testDir = func() string {

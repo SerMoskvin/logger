@@ -3,10 +3,11 @@ package logger_test
 import (
 	"encoding/json"
 	"fmt"
-	l "logger"
 	"os"
 	"strings"
 	"testing"
+
+	l "github.com/SerMoskvin/logger"
 )
 
 func TestLogger_Levels(t *testing.T) {

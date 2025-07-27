@@ -1,12 +1,13 @@
 package logger_test
 
 import (
-	l "logger"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	l "github.com/SerMoskvin/logger"
 )
 
 var testLogsDir = filepath.Join("test_files")
