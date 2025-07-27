@@ -1,4 +1,4 @@
-module logger
+module github.com/SerMoskvin/logger
 
 go 1.24.5
 
