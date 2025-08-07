@@ -1,1 +1,1 @@
-{"level":"INFO","timestamp":"2025-07-25T15:08:08.009+0300","caller":"logger-main/logger.go:80","message":"test log creation"}
+{"level":"INFO","timestamp":"2025-08-07T21:16:46.228+0300","caller":"test/logger_test.go:164","message":"test log creation"}

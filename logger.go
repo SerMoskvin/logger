@@ -65,7 +65,7 @@ func New(cfg Config) (*Logger, error) {
 	)
 
 	return &Logger{
-		Logger: zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel)),
+		Logger: zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(zapcore.ErrorLevel)),
 		level:  cfg.Level,
 		closer: lumberjackLogger,
 	}, nil
