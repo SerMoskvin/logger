@@ -1,0 +1,12 @@
+So i try changing "AddCallerSkip" from 0 to  and test it on "levels_test.log", so:
+0 -> "caller":"logger-main/logger.go:76" - the main file, logger global logic;
+1 -> "caller":"test/level_test.go:43" - subfile, logic of level of the logger;
+2 -> "caller":"testing/testing.go:1792" - package testing, i guess;
+3 -> "caller":"runtime/asm_amd64.s:1700" - it is my core...
+4 and higher -> caller tag it's not shown anymore, which is logical - there's nowhere lower;
+-1 -> "caller":"zap@v1.27.0/logger.go:238" - the orogonal package zap that provides my package work;
+-2 -> "caller":"zap@v1.27.0/logger.go:379" - some displacement in "zap";
+-3 -> "caller":"stacktrace/stack.go:83" - i have no idea what is this...
+-4 -> "caller":"runtime/extern.go:332" - so? maybe that is zap's internal components;
+-5 and below -> "caller":"runtime/extern.go:332" 
+---
